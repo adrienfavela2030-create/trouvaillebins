@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Trouvaille Bins</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial;
+  background: #0b0f14;
+  color: white;
+}
+
+.nav {
+  display:flex;
+  justify-content:space-between;
+  padding:15px;
+  background:#111827;
+}
+
+.glass {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px);
+  padding:20px;
+  border-radius:15px;
+  width:320px;
+  margin:40px auto;
+}
+
+input, button, select {
+  width:100%;
+  padding:10px;
+  margin:5px 0;
+  border-radius:8px;
+  border:none;
+}
+
+button {
+  background:#00c27a;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+button:hover {
+  transform: scale(1.03);
+}
+
+.card {
+  background: rgba(255,255,255,0.05);
+  padding:15px;
+  border-radius:12px;
+  margin:10px;
+}
+
+.hidden { display:none; }
+</style>
+</head>
+
+<body>
+
+<div class="nav">
+  <b>Trouvaille Bins</b>
+  <div id="userNav"></div>
+</div>
+
+<!-- AUTH -->
+<div id="authBox" class="glass">
+  <h2>Login</h2>
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="hidden">
+
+  <div class="card">
+    <h3>Book Service</h3>
+
+    <select id="plan">
+      <option value="one">One-Time Cleaning</option>
+      <option value="sub">Monthly Subscription ($45)</option>
+    </select>
+
+    <input id="bins" type="number" placeholder="Bins">
+    <input id="address" placeholder="Address">
+
+    <p id="price">Price: $0</p>
+
+    <button onclick="book()">Book</button>
+  </div>
+
+  <div class="card">
+    <h3>Your Bookings</h3>
+    <div id="bookings"></div>
+  </div>
+
+</div>
+
+<script>
+const supabase = window.supabase.createClient(
+  "https://fccmztcmbvnnhljvswkd.supabase.co/rest/v1/",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjY216dGNtYnZubmhsanZzd2tkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0NDI2MDIsImV4cCI6MjA5NDAxODYwMn0.vTakp5OnxezorsE5O2Htr2oU5_lPEhJJ3cVPK-TBG_s"
+);
+
+let user = null;
+
+// LOGIN
+async function login(){
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: email.value,
+    password: password.value
+  });
+
+  if(error) return alert(error.message);
+
+  user = data.user;
+
+  authBox.classList.add("hidden");
+  dashboard.classList.remove("hidden");
+
+  loadBookings();
+}
+
+// PRICE
+bins.oninput = () => {
+  let b = parseInt(bins.value || 0);
+  let p = plan.value;
+
+  let price = p === "sub" ? 45 : (15 + (b-1)*5);
+  if(b <= 0) price = 0;
+
+  priceEl.innerText = "Price: $" + price;
+};
+
+let priceEl = document.getElementById("price");
+
+// BOOK
+async function book(){
+  let binsVal = bins.value;
+  let addressVal = address.value;
+  let planVal = plan.value;
+
+  let price = planVal === "sub" ? 45 : (15 + (binsVal-1)*5);
+
+  await supabase.from("bookings").insert({
+    user_id: user.id,
+    address: addressVal,
+    bins: binsVal,
+    plan: planVal,
+    price: price
+  });
+
+  alert("Booked!");
+  loadBookings();
+}
+
+// LOAD
+async function loadBookings(){
+  let { data } = await supabase
+    .from("bookings")
+    .select("*")
+    .eq("user_id", user.id);
+
+  bookings.innerHTML = data.map(b =>
+    `<p>${b.plan} - ${b.bins} bins - $${b.price}</p>`
+  ).join("");
+}
+</script>
+
+</body>
+</html>
